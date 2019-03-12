@@ -1,0 +1,25 @@
+spring:
+  profiles:
+    name: dubbo-web-login
+server: 
+  port: 9090
+dubbo:
+  application:
+    id: dubbo-web-consumer
+    name: dubbo-web-consumer
+  protocol:
+    id: dubbo
+    name: dubbo
+    port: 12345
+    status: server
+  registry:
+    id: cx-registry
+    address: zookeeper://127.0.0.1:2181
+  scan:
+    base-packages: 
+    - com.cx.login.controller
+  consumer:
+    check: false
+    timeout: 5000
+    
+
