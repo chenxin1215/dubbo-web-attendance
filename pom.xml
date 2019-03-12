@@ -151,7 +151,6 @@
 
 	<build>
          <!--用于打成jar包的名字-->
-        <finalName>login-web</finalName>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
