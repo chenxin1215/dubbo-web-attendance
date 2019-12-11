@@ -12,6 +12,7 @@ import com.xx.attendance.dto.response.attendance.AttendanceMonthInfo;
 import com.xx.attendance.dto.view.ListBaseView;
 import com.xx.attendance.dto.view.SimpleView;
 import com.xx.attendance.dto.view.StringView;
+import com.xx.attendance.entity.MonthStatistics;
 import com.xx.attendance.server.ApproveService;
 import com.xx.attendance.server.AttendanceService;
 import com.xx.attendance.server.ConfigureService;
@@ -117,13 +118,16 @@ public class AttendanceController {
     /**
      * 查看员工考勤信息列表（日）
      * 
-     * @param request
      */
-    @RequestMapping(value = "queryAttendanceInfoByParam", method = RequestMethod.POST)
+    @RequestMapping(value = "queryAttendanceInfoList", method = RequestMethod.POST)
     @ResponseBody
-    public ListBaseView<AttendanceDetail> queryAttendanceInfoByParam(QueryAttendanceInfoParam request) {
-        Assert.notNull(request.getEmployeeId(), "员工id不能为空");
+    public ListBaseView<AttendanceDetail> queryAttendanceInfoList() {
         ListBaseView<AttendanceDetail> view = new ListBaseView();
+        QueryAttendanceInfoParam request = new QueryAttendanceInfoParam();
+        request.setEmployeeId(PublicData.searchAttendanceEmpId);
+        request.setRecordYear(PublicData.searchAttendanceYear);
+        request.setRecordMonth(PublicData.searchAttendanceMonth);
+
         List<AttendanceDetail> attendanceDetails = attendanceService.queryAttendanceDetailListByParam(request);
         view.success(attendanceDetails);
         return view;
@@ -132,23 +136,19 @@ public class AttendanceController {
     /**
      * 查看员工考勤信息详情（月）
      * 
-     * @param request
      */
-    @RequestMapping(value = "queryAttendanceMonthInfoByParam", method = RequestMethod.POST)
+    @RequestMapping(value = "queryAttendanceMonthInfo", method = RequestMethod.POST)
     @ResponseBody
-    public SimpleView queryAttendanceMonthInfoByParam(QueryAttendanceInfoParam request) {
+    public SimpleView queryAttendanceMonthInfo() {
         SimpleView view = new SimpleView();
 
         if (PublicData.loginUser == null) {
             view.fail("请先登陆！");
         } else {
-            if (request.getAttendanceDate() != null) {
-                Integer year = DateUtil.getYear(DateUtil.stringToDate(request.getAttendanceDate(), DateUtil.DATE_BASE));
-                Integer recordMonth =
-                    DateUtil.getDayOfMonth(DateUtil.stringToDate(request.getAttendanceDate(), DateUtil.DATE_BASE));
-                request.setRecordYear(year);
-                request.setRecordMonth(recordMonth);
-            }
+            QueryAttendanceInfoParam request = new QueryAttendanceInfoParam();
+            request.setEmployeeId(PublicData.searchAttendanceEmpId);
+            request.setRecordYear(PublicData.searchAttendanceYear);
+            request.setRecordMonth(PublicData.searchAttendanceMonth);
 
             AttendanceMonthInfo result = new AttendanceMonthInfo();
 
@@ -162,10 +162,35 @@ public class AttendanceController {
     }
 
     /**
+     * 查询考勤信息列表（月）
+     *
+     * @return
+     */
+    @RequestMapping(value = "queryAttendanceMonthByParam", method = RequestMethod.POST)
+    @ResponseBody
+    public ListBaseView<AttendanceMonthInfo> queryAttendanceMonthByParam(QueryAttendanceInfoParam param) {
+        ListBaseView<AttendanceMonthInfo> view = new ListBaseView<>();
+
+        if (param.getAttendanceDate() != null) {
+            param.setRecordYear(DateUtil.getYear(DateUtil.stringToDate(param.getAttendanceDate(), DateUtil.DATE_BASE)));
+            param.setRecordMonth(
+                DateUtil.getMonth(DateUtil.stringToDate(param.getAttendanceDate(), DateUtil.DATE_BASE)));
+        }
+
+        int count = attendanceService.queryAttendanceMonthListByParamCount(param);
+        view.setTotal(count);
+        if (count > 0) {
+            List<AttendanceMonthInfo> attendanceMonthInfos = attendanceService.queryAttendanceMonthListByParam(param);
+            view.setRspData(attendanceMonthInfos);
+        }
+        view.success();
+        return view;
+    }
+
+    /**
      * 发起审批流程
      * 
-     * @param request:
-     *            all
+     * @param request: all
      */
     @RequestMapping(value = "createApproval", method = RequestMethod.POST)
     @ResponseBody
@@ -181,8 +206,7 @@ public class AttendanceController {
     /**
      * 查看自身审批信息列表
      * 
-     * @param request:
-     *            员工ID，审批类型、审批日期筛选
+     * @param request: 员工ID，审批类型、审批日期筛选
      */
     @RequestMapping(value = "queryApprovalInfoListByEmployeeId", method = RequestMethod.POST)
     @ResponseBody
@@ -210,6 +234,23 @@ public class AttendanceController {
         SimpleView resp = new SimpleView();
         ConfigDetail config = configureService.getConfig();
         resp.success(config);
+        return resp;
+    }
+
+    @RequestMapping(value = "goAttendanceDetail", method = RequestMethod.POST)
+    @ResponseBody
+    public StringView goAttendanceDetail(MonthStatistics request) {
+        StringView resp = new StringView();
+        if (request.getId() == null) {
+            resp.fail("id不能为空！");
+        } else {
+            MonthStatistics monthStatistics = attendanceService.getMonthStatisticsById(request.getId());
+
+            PublicData.searchAttendanceEmpId = monthStatistics.getEmployeeId();
+            PublicData.searchAttendanceYear = monthStatistics.getYears();
+            PublicData.searchAttendanceMonth = monthStatistics.getMonths();
+            resp.success();
+        }
         return resp;
     }
 

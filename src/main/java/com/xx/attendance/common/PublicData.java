@@ -18,4 +18,11 @@ public class PublicData {
     // 员工id
     public static Long employeesId;
 
+    // 查询考勤参数
+    public static Long searchAttendanceEmpId;
+
+    public static Integer searchAttendanceYear;
+
+    public static Integer searchAttendanceMonth;
+
 }

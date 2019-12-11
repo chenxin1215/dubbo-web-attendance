@@ -1,17 +1,19 @@
 package com.xx.attendance.controller;
 
 import com.alibaba.dubbo.config.annotation.Reference;
+import com.xx.attendance.common.PublicData;
 import com.xx.attendance.dto.requset.approve.ApprovalIdRequest;
 import com.xx.attendance.dto.requset.approve.ApprovalRequest;
 import com.xx.attendance.dto.requset.approve.QueryApproveParam;
 import com.xx.attendance.dto.requset.attendance.QueryAttendanceInfoParam;
+import com.xx.attendance.dto.requset.employee.EmployeeIdRequest;
 import com.xx.attendance.dto.requset.employee.InsertEmployeeRequest;
 import com.xx.attendance.dto.requset.employee.QueryEmployeeListParam;
 import com.xx.attendance.dto.response.EmployeeDetail;
 import com.xx.attendance.dto.response.LogInfoDetail;
 import com.xx.attendance.dto.response.approve.ApproveInfoData;
-import com.xx.attendance.dto.response.attendance.AttendanceMonthInfo;
 import com.xx.attendance.dto.view.ListBaseView;
+import com.xx.attendance.dto.view.SimpleView;
 import com.xx.attendance.dto.view.StringView;
 import com.xx.attendance.entity.AttendanceInfo;
 import com.xx.attendance.entity.ConfigureInfo;
@@ -19,7 +21,10 @@ import com.xx.attendance.entity.EmployeeInfo;
 import com.xx.attendance.server.*;
 import com.xx.attendance.utils.DateUtil;
 import org.springframework.beans.BeanUtils;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestMethod;
+import org.springframework.web.bind.annotation.ResponseBody;
+import org.springframework.web.bind.annotation.RestController;
 
 import javax.servlet.http.HttpServletRequest;
 import java.util.List;
@@ -58,12 +63,10 @@ public class AdminController {
      */
     @RequestMapping(value = "addEmployee", method = RequestMethod.POST)
     @ResponseBody
-    public StringView addEmployee( InsertEmployeeRequest request) {
-        System.out.println("#### addEmployee start request = " + request.toString());
+    public StringView addEmployee(InsertEmployeeRequest request) {
         StringView view = new StringView();
         employeeService.insertEmployee(request);
         view.success("添加成功");
-        System.out.println("#### addEmployee end");
         return view;
     }
 
@@ -74,7 +77,7 @@ public class AdminController {
      */
     @RequestMapping(value = "updateEmployee", method = RequestMethod.POST)
     @ResponseBody
-    public StringView updateEmployee( EmployeeInfo request) {
+    public StringView updateEmployee(EmployeeInfo request) {
         StringView view = new StringView();
         employeeService.updateById(request);
         view.success("修改成功");
@@ -88,7 +91,7 @@ public class AdminController {
      */
     @RequestMapping(value = "queryEmployeeListByParam", method = RequestMethod.POST)
     @ResponseBody
-    public ListBaseView<EmployeeDetail> queryEmployeeListByParam( QueryEmployeeListParam request) {
+    public ListBaseView<EmployeeDetail> queryEmployeeListByParam(QueryEmployeeListParam request) {
         ListBaseView<EmployeeDetail> view = new ListBaseView<>();
 
         int count = employeeService.queryEmployeeListByParamCount(request);
@@ -110,7 +113,7 @@ public class AdminController {
      */
     @RequestMapping(value = "passApproval", method = RequestMethod.POST)
     @ResponseBody
-    public StringView passApproval( ApprovalIdRequest idRequest, HttpServletRequest request) {
+    public StringView passApproval(ApprovalIdRequest idRequest, HttpServletRequest request) {
         StringView view = new StringView();
         EmployeeInfo user = (EmployeeInfo)request.getSession().getAttribute("user");
         approveService.passApproval(idRequest.getApprovalId(), user.getEmployeeId());
@@ -125,7 +128,7 @@ public class AdminController {
      */
     @RequestMapping(value = "refusedApproval", method = RequestMethod.POST)
     @ResponseBody
-    public StringView refusedApproval( ApprovalIdRequest idRequest, HttpServletRequest request) {
+    public StringView refusedApproval(ApprovalIdRequest idRequest, HttpServletRequest request) {
         StringView view = new StringView();
         EmployeeInfo user = (EmployeeInfo)request.getSession().getAttribute("user");
         approveService.refusedApproval(idRequest.getApprovalId(), user.getEmployeeId());
@@ -140,7 +143,7 @@ public class AdminController {
      */
     @RequestMapping(value = "queryApprovalListByParam", method = RequestMethod.POST)
     @ResponseBody
-    public ListBaseView<ApproveInfoData> queryApprovalListByParam( ApprovalRequest request) {
+    public ListBaseView<ApproveInfoData> queryApprovalListByParam(ApprovalRequest request) {
         ListBaseView<ApproveInfoData> view = new ListBaseView<>();
         QueryApproveParam param = new QueryApproveParam();
         BeanUtils.copyProperties(request, param);
@@ -157,22 +160,33 @@ public class AdminController {
     }
 
     /**
-     * 查询考勤信息列表（月）
-     * 
+     * 重新生成某月考勤信息
+     *
      * @return
      */
-    @RequestMapping(value = "queryAttendanceMonthByParam", method = RequestMethod.POST)
+    @RequestMapping(value = "generateMonthAttendanceInfo", method = RequestMethod.POST)
     @ResponseBody
-    public ListBaseView<AttendanceMonthInfo> queryAttendanceMonthByParam(QueryAttendanceInfoParam param) {
-        ListBaseView<AttendanceMonthInfo> view = new ListBaseView<>();
+    public StringView generateMonthAttendanceInfo(QueryAttendanceInfoParam param) {
+        StringView view = new StringView();
 
-        int count = attendanceService.queryAttendanceMonthListByParamCount(param);
-        view.setTotal(count);
-        if (count > 0) {
-            List<AttendanceMonthInfo> attendanceMonthInfos = attendanceService.queryAttendanceMonthListByParam(param);
-            view.setRspData(attendanceMonthInfos);
+        EmployeeInfo employeeInfo = PublicData.loginUser;
+        if (employeeInfo == null) {
+            view.fail("未登录！");
+        } else {
+            if (param.getAttendanceDate() != null) {
+                param.setRecordYear(
+                    DateUtil.getYear(DateUtil.stringToDate(param.getAttendanceDate(), DateUtil.DATE_BASE)));
+                param.setRecordMonth(
+                    DateUtil.getMonth(DateUtil.stringToDate(param.getAttendanceDate(), DateUtil.DATE_BASE)));
+            }
+
+            Integer result = attendanceService.generateMonthAttendanceInfo(param, employeeInfo.getEmployeeId());
+            if (result != 1) {
+                view.fail("操作失败！");
+            } else {
+                view.success("生成成功！");
+            }
         }
-        view.success();
         return view;
     }
 
@@ -183,7 +197,7 @@ public class AdminController {
      */
     @RequestMapping(value = "updateAttendanceInfo", method = RequestMethod.POST)
     @ResponseBody
-    public StringView updateAttendanceInfo( AttendanceInfo request) {
+    public StringView updateAttendanceInfo(AttendanceInfo request) {
         StringView view = new StringView();
         attendanceService.updateAttendance(request);
         view.success("修改成功");
@@ -197,7 +211,7 @@ public class AdminController {
      */
     @RequestMapping(value = "updateConfigureInfo", method = RequestMethod.POST)
     @ResponseBody
-    public StringView updateConfigureInfo( ConfigureInfo request, HttpServletRequest userRequest) {
+    public StringView updateConfigureInfo(ConfigureInfo request, HttpServletRequest userRequest) {
         StringView view = new StringView();
         EmployeeInfo user = (EmployeeInfo)userRequest.getSession().getAttribute("user");
         if (user == null) {
@@ -221,6 +235,40 @@ public class AdminController {
         ListBaseView<LogInfoDetail> view = new ListBaseView();
         List<LogInfoDetail> LogInfoDetails = LogInfoService.queryLogInfoList();
         view.success(LogInfoDetails);
+        return view;
+    }
+
+    /**
+     * 设置员工id
+     *
+     * @param request
+     * @return
+     */
+    @RequestMapping(value = "setAdminEmployeeId", method = RequestMethod.POST)
+    @ResponseBody
+    public StringView setAdminEmployeeId(EmployeeIdRequest request) {
+        StringView view = new StringView();
+        PublicData.searchAttendanceEmpId = request.getEmployeeId();
+        view.success();
+        return view;
+    }
+
+    /**
+     * 查询员工详情
+     *
+     * @return
+     */
+    @RequestMapping(value = "getEmployeeDetailById", method = RequestMethod.POST)
+    @ResponseBody
+    public SimpleView getEmployeeDetailById() {
+        SimpleView view = new SimpleView();
+        Long employeeId = PublicData.searchAttendanceEmpId;
+        if (employeeId == null) {
+            view.turn();
+        } else {
+            EmployeeDetail employeeDetail = employeeService.getEmployeeById(employeeId);
+            view.success(employeeDetail);
+        }
         return view;
     }
 
