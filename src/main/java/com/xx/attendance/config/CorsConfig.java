@@ -1,4 +1,4 @@
-package com.cx.login.config;
+package com.xx.attendance.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;

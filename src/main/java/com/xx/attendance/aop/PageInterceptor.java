@@ -1,4 +1,4 @@
-package com.cx.login.aop;
+package com.xx.attendance.aop;
 
 import java.util.List;
 
@@ -19,7 +19,7 @@ import com.github.pagehelper.PageInfo;
  * Description: 分页切面
  * </p>
  * 
- * @author cx
+ * @author xx
  * @date 2018年11月25日
  *
  */
@@ -33,12 +33,12 @@ public class PageInterceptor {
      * @Title: process
      * @Description: (把所有controller后面带有Paging的方法加上分页功能) 规定：方法后面两个必须是 当前页和每页数量
      * @realization: (AOP编程)
-     * @author: cx
+     * @author: xx
      * @param point
      * @return
      * @throws Throwable
      */
-    @Around("execution(* com.cx.login.controller..*.*Paging(..))")
+    @Around("execution(* com.xx.attendance.controller..*.*Paging(..))")
     public Object process(ProceedingJoinPoint point) throws Throwable {
         // System.out.println("分页aop执行。。");
         Object[] args = point.getArgs();
